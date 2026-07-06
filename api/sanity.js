@@ -6,7 +6,11 @@ module.exports = async function handler(req, res) {
 
   let query = '*[_type == "salonInfo"][0]';
   if (type === 'lookbook') {
-    query = '*[_type == "salonInfo"][0]{ "fotos": galerij[].asset->url }';
+    query = '*[_type == "lookbook"] | order(coalesce(volgorde, 999) asc, _createdAt asc){ "url": image.asset->url, title, volgorde }';
+  } else if (type === 'openingstijden') {
+    query = '*[_type == "openingstijd"] | order(coalesce(volgorde, 999) asc, _createdAt asc){dag, tijd, volgorde}';
+  } else if (type === 'diensten') {
+    query = '*[_type == "dienst"] | order(coalesce(volgorde, 999) asc, _createdAt asc){naam, prijs, highlight, volgorde}';
   }
 
   const url = `https://${projectId}.api.sanity.io/${apiVersion}/data/query/${dataset}?query=${encodeURIComponent(query)}`;

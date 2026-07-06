@@ -23,15 +23,8 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('over-ons-cta').href          = c.boekingslink;
 
   // ── Tarieven ─────────────────────────────────────────
-  var tb = document.getElementById('tarieven-body');
-  c.diensten.forEach(function (d) {
-    var tr = document.createElement('tr');
-    if (d.highlight) tr.className = 'vip-row';
-    var badge = d.highlight ? '<span class="vip-badge">Meest gekozen</span>' : '';
-    tr.innerHTML = '<td>' + d.naam + badge + '</td><td class="prijs">' + d.prijs + '</td>';
-    tb.appendChild(tr);
-  });
   document.getElementById('tarieven-boek-link').href = c.boekingslink;
+  renderTarieven(c.diensten);
 
   // ── Reviews ──────────────────────────────────────────
   var rg = document.getElementById('reviews-grid');
@@ -118,7 +111,36 @@ document.addEventListener('DOMContentLoaded', function () {
   // ── Start Sanity Integraties ─────────────────────────
   haalOpeningstijdenOp();
   haalLookbookOp();
+  haalTarievenOp();
 });
+
+function renderTarieven(diensten) {
+  var tb = document.getElementById('tarieven-body');
+  if (!tb) return;
+  tb.innerHTML = '';
+
+  var dienstenLijst = Array.isArray(diensten) && diensten.length ? diensten : websiteContent.diensten;
+  dienstenLijst.forEach(function (d) {
+    var tr = document.createElement('tr');
+    if (d.highlight) tr.className = 'vip-row';
+    var badge = d.highlight ? '<span class="vip-badge">Meest gekozen</span>' : '';
+    tr.innerHTML = '<td>' + (d.naam || '') + badge + '</td><td class="prijs">' + (d.prijs || '') + '</td>';
+    tb.appendChild(tr);
+  });
+}
+
+async function haalTarievenOp() {
+  try {
+    const data = await fetchSanityData('diensten');
+    if (Array.isArray(data) && data.length) {
+      renderTarieven(data);
+      return;
+    }
+  } catch (error) {
+    console.warn('Falling back to local tarieven content:', error);
+  }
+  renderTarieven(websiteContent.diensten);
+}
 
 // Sanity gegevens via Vercel API proxy met lokale fallback
 const PROJECT_ID = 'pnnengxa';
@@ -126,9 +148,16 @@ const DATASET = 'production';
 const API_VERSION = 'v2024-01-01';
 
 async function fetchSanityData(type) {
-  const query = type === 'lookbook'
-    ? '*[_type == "salonInfo"][0]{ "fotos": galerij[].asset->url }'
-    : '*[_type == "salonInfo"][0]';
+  let query;
+  if (type === 'lookbook') {
+    query = '*[_type == "lookbook"] | order(coalesce(volgorde, 999) asc, _createdAt asc){ "url": image.asset->url, title, volgorde }';
+  } else if (type === 'openingstijden') {
+    query = '*[_type == "openingstijd"] | order(coalesce(volgorde, 999) asc, _createdAt asc){dag, tijd, volgorde}';
+  } else if (type === 'diensten') {
+    query = '*[_type == "dienst"] | order(coalesce(volgorde, 999) asc, _createdAt asc){naam, prijs, highlight, volgorde}';
+  } else {
+    query = '*[_type == "salonInfo"][0]';
+  }
   const proxyUrl = `/api/sanity?type=${type}`;
   const directUrl = `https://${PROJECT_ID}.api.sanity.io/${API_VERSION}/data/query/${DATASET}?query=${encodeURIComponent(query)}`;
 
@@ -161,10 +190,25 @@ function renderOpeningstijden(data) {
   lijst.innerHTML = '';
 
   if (Array.isArray(data)) {
+    if (data.length >= 7) {
+      data.forEach(item => {
+        const tijd = item.tijd || 'Gesloten';
+        const dagNetjes = item.dag || '';
+        lijst.innerHTML += `<li class="${tijd === 'Gesloten' ? 'dag-gesloten' : ''}"><span class="dag-naam">${dagNetjes}</span><span class="dag-tijd">${tijd}</span></li>`;
+      });
+      return;
+    }
+
+    const dagVolgorde = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
+    const perDag = {};
     data.forEach(item => {
-      const tijd = item.tijd || 'Gesloten';
-      const dagNetjes = item.dag || '';
-      lijst.innerHTML += `<li class="${tijd === 'Gesloten' ? 'dag-gesloten' : ''}"><span class="dag-naam">${dagNetjes}</span><span class="dag-tijd">${tijd}</span></li>`;
+      if (item && item.dag) {
+        perDag[item.dag] = item.tijd || 'Gesloten';
+      }
+    });
+    dagVolgorde.forEach(dag => {
+      const tijd = perDag[dag] || 'Gesloten';
+      lijst.innerHTML += `<li class="${tijd === 'Gesloten' ? 'dag-gesloten' : ''}"><span class="dag-naam">${dag}</span><span class="dag-tijd">${tijd}</span></li>`;
     });
     return;
   }
@@ -210,25 +254,29 @@ function renderLookbook(items) {
 
 async function haalOpeningstijdenOp() {
   try {
-    const data = await fetchSanityData('content');
-    if (data) {
+    const data = await fetchSanityData('openingstijden');
+    if (Array.isArray(data) && data.length) {
       renderOpeningstijden(data);
-    } else {
-      renderOpeningstijden(websiteContent.openingstijden);
+      return;
     }
   } catch (error) {
     console.warn('Falling back to local openingstijden content:', error);
-    renderOpeningstijden(websiteContent.openingstijden);
   }
+  const fallback = await fetchSanityData('content');
+  renderOpeningstijden(fallback || websiteContent.openingstijden);
 }
 
 async function haalLookbookOp() {
   try {
     const data = await fetchSanityData('lookbook');
-    const fotos = data && data.fotos ? data.fotos : data;
-    renderLookbook(fotos || websiteContent.lookbook);
+    if (Array.isArray(data) && data.length) {
+      renderLookbook(data);
+      return;
+    }
   } catch (error) {
     console.warn('Falling back to local lookbook content:', error);
-    renderLookbook(websiteContent.lookbook);
   }
+  const fallback = await fetchSanityData('content');
+  const fotos = fallback && fallback.fotos ? fallback.fotos : websiteContent.lookbook;
+  renderLookbook(fotos);
 }
