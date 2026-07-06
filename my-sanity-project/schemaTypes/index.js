@@ -1,4 +1,5 @@
 import { defineType, defineField } from 'sanity'
+import { lookbookType } from './lookbookType'
 
 const salonInfo = defineType({
   name: 'salonInfo',
@@ -44,4 +45,70 @@ const salonInfo = defineType({
   ]
 })
 
-export const schemaTypes = [salonInfo]
+const dienstType = defineType({
+  name: 'dienst',
+  title: 'Dienst',
+  type: 'document',
+  fields: [
+    { name: 'naam', title: 'Dienst naam', type: 'string', validation: Rule => Rule.required() },
+    { name: 'prijs', title: 'Prijs', type: 'string', validation: Rule => Rule.required() },
+    { name: 'volgorde', title: 'Volgorde', type: 'number', initialValue: 1 },
+    { name: 'highlight', title: 'Uitgelicht', type: 'boolean', initialValue: false }
+  ],
+  preview: {
+    select: { title: 'naam', prijs: 'prijs', volgorde: 'volgorde' },
+    prepare(selection) {
+      const { title, prijs, volgorde } = selection
+      return {
+        title: title || 'Naamloze dienst',
+        subtitle: `EUR ${prijs || '-'} | Volgorde: ${volgorde ?? '-'}`,
+      }
+    }
+  },
+  orderings: [
+    {
+      title: 'Volgorde (laag naar hoog)',
+      name: 'volgordeAsc',
+      by: [{ field: 'volgorde', direction: 'asc' }]
+    }
+  ]
+})
+
+const openingstijdType = defineType({
+  name: 'openingstijd',
+  title: 'Openingstijd',
+  type: 'document',
+  fields: [
+    {
+      name: 'dag',
+      title: 'Dag',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Maandag', value: 'Maandag' },
+          { title: 'Dinsdag', value: 'Dinsdag' },
+          { title: 'Woensdag', value: 'Woensdag' },
+          { title: 'Donderdag', value: 'Donderdag' },
+          { title: 'Vrijdag', value: 'Vrijdag' },
+          { title: 'Zaterdag', value: 'Zaterdag' },
+          { title: 'Zondag', value: 'Zondag' }
+        ]
+      },
+      validation: Rule => Rule.required()
+    },
+    { name: 'tijd', title: 'Tijd', type: 'string', validation: Rule => Rule.required() },
+    { name: 'volgorde', title: 'Volgorde', type: 'number', initialValue: 1 }
+  ],
+  preview: {
+    select: { title: 'dag', subtitle: 'tijd' }
+  },
+  orderings: [
+    {
+      title: 'Volgorde (laag naar hoog)',
+      name: 'volgordeAsc',
+      by: [{ field: 'volgorde', direction: 'asc' }]
+    }
+  ]
+})
+
+export const schemaTypes = [salonInfo, dienstType, lookbookType, openingstijdType]
