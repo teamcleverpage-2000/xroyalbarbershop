@@ -179,6 +179,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.
 .hero {
   position: relative;
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: center;
   padding-top: var(--nav-h);
@@ -608,6 +609,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.
    RESPONSIVE — TABLET
    ═══════════════════════════════════════════ */
 @media (max-width: 900px) {
+  :root { --nav-h: 72px; }
   .wrapper { padding: 64px 24px; }
   .nav { padding: 0 24px; height: 72px; }
   .logo-img { height: 52px; }
@@ -626,22 +628,39 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.
    ═══════════════════════════════════════════ */
 @media (max-width: 600px) {
   .nav-links {
-    display: none;
+    display: flex;
     flex-direction: column;
     position: absolute;
-    top: var(--nav-h);
+    top: 100%;
     left: 0; right: 0;
     background: var(--zwart);
     border-top: 1px solid var(--lijn);
     padding: 8px 0 16px;
     gap: 0;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: max-height 0.35s ease, opacity 0.28s ease, transform 0.35s ease;
   }
-  .nav-links.open { display: flex; }
+  .nav-links.open {
+    max-height: 420px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
   .nav-links a { padding: 13px 24px; font-size: 0.85rem; width: 100%; border-bottom: 1px solid var(--lijn); }
   .nav-cta { text-align: center; border-radius: 0 !important; }
   .nav-toggle { display: flex; }
 
-  .hero-content { padding: 60px 24px 80px; margin-bottom: 380px; }
+  .hero {
+    min-height: 100svh;
+  }
+  .hero-content {
+    padding: 36px 24px 40px;
+    margin-bottom: 0;
+  }
   .hero-knoppen { flex-direction: column; }
   .hero-knoppen .btn-primary,
   .hero-knoppen .btn-ghost { text-align: center; }
